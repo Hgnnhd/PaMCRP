@@ -1,10 +1,10 @@
-# 🏥 PaMCRP: Passive Multi-Cancer Risk Prediction
+# 🏥 PaMCPR: A Passive Multi-Cancer Risk Prediction Framework Using Longitudinal Disease Trajectories
 
 <div align="center">
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
 
 *A deep learning framework for passive multi-cancer risk prediction using longitudinal Electronic Health Records*
 
@@ -12,7 +12,7 @@
 
 ## 📋 Overview
 
-**PaMCRP** is an advanced pipeline that predicts cancer risk from longitudinal Electronic Health Records (EHR) data. It builds patient disease trajectories from ICD-10 codes and temporal features, then trains a transformer-based model with auxiliary demographic and behavioral features.
+**PaMCPR** is an advanced pipeline that predicts cancer risk from longitudinal Electronic Health Records (EHR) data. It builds patient disease trajectories from ICD-10 codes and temporal features, then trains a transformer-based model with auxiliary demographic and behavioral features.
 
 ### 🎯 Key Features
 - **Passive Prediction**: Utilizes existing EHR data without requiring dedicated screening tests
@@ -112,7 +112,7 @@ python step5_test.py
 ## 📁 Repository Structure
 
 ```
-PaMCRP/
+PaMCPR/
 ├── 📄 config.py                 # Global configuration
 ├── 🚀 run.py                   # Orchestrates preprocessing (steps 1-3)
 ├── 🧹 step1_cleansample.py     # Build cohort subset
@@ -194,7 +194,7 @@ We welcome contributions! Please feel free to submit issues and pull requests.
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
 ---
 
