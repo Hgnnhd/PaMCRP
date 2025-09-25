@@ -1,112 +1,205 @@
-PaMCRP is a pipeline for passive multi-cancer risk prediction from longitudinal EHR. It builds patient disease trajectories from ICD-10 codes and temporal features, constructs datasets, and trains a transformer-based model with auxiliary demographic/behavioral features.
+# 🏥 PaMCRP: Passive Multi-Cancer Risk Prediction
 
-This README provides the minimal system requirements, recommended software versions, data preparation, and a step-by-step run guide.
+<div align="center">
 
-Overview
-- Inputs: EHR table with ICD-10 sequences, diagnosis dates, demographics/auxiliaries.
-- Outputs: Prepared datasets, split indices, trained checkpoint(s), and evaluation metrics/plots.
-- Target cancers: Top 5 incidence cancers (Lung C34, Breast C50, Colorectal C18-C20, Prostate C61, Stomach C16).
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.0+-ee4c2c.svg)](https://pytorch.org/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-System Requirements
-- OS: Linux (Ubuntu 20.04/22.04) or similar; macOS works for CPU; Windows WSL2 recommended.
-- CPU: x86_64; 16 GB RAM recommended.
-- GPU: Optional but recommended. NVIDIA GPU with CUDA 11.x/12.x and >=8 GB VRAM.
-- Disk: ~10 GB free for datasets and artifacts (depends on your data size).
+*A deep learning framework for passive multi-cancer risk prediction using longitudinal Electronic Health Records*
 
-Software Versions (tested)
-- Python: 3.9-3.11 (recommend 3.10)
-- PyTorch: 2.0-2.3 (with matching CUDA build if using GPU)
-- CUDA Toolkit: 11.8 or 12.1 (optional if using GPU)
-- Others: pandas>=1.5, numpy>=1.23, scikit-learn>=1.1, tqdm, matplotlib, gensim
+</div>
 
-Quick Environment Setup
-1) Create environment (example with conda):
-   conda create -n pamcrp python=3.10 -y
-   conda activate pamcrp
+## 📋 Overview
 
-2) Install PyTorch (choose the command for your CUDA):
-   # CUDA 11.8 example
-   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-   # CPU-only example
-   pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+**PaMCRP** is an advanced pipeline that predicts cancer risk from longitudinal Electronic Health Records (EHR) data. It builds patient disease trajectories from ICD-10 codes and temporal features, then trains a transformer-based model with auxiliary demographic and behavioral features.
 
-3) Install Python deps:
-   pip install pandas numpy scikit-learn tqdm matplotlib gensim
+### 🎯 Key Features
+- **Passive Prediction**: Utilizes existing EHR data without requiring dedicated screening tests
+- **Multi-Cancer Approach**: Simultaneously predicts risk for 5 highest-incidence cancers
+- **Synergistic Learning**: Captures both cancer-specific and shared risk patterns
+- **Temporal Modeling**: Incorporates disease trajectory sequences with time intervals
+- **Transformer Architecture**: Advanced deep learning with hierarchical embedding
 
-Repository Structure (key files)
-- config.py: Global settings (device, time horizons, dataset path, etc.).
-- run.py: Orchestrates steps 1-3 preprocessing.
-- step1_cleansample.py: Build cohort subset and save step-1 CSV.
-- step2_rankdate.py: Sort diagnoses, compute temporal features, labels/masks; save dictionaries and plots.
-- step3_1_icdmapping.py: ICD-10 code utilities (chapters/categories mapping, helpers).
-- step3_2_idx.py: Stratified train/val/test split; save indices.
-- step3_3_embedding.py: Build per-patient tuples with aux and time features.
-- step3_4_dataset.py: Materialize split datasets and persist artifacts.
-- step4_train.py: Train model; save best checkpoint and results.
-- step5_test.py: Load checkpoint and evaluate on test set.
+### 🎯 Target Cancers
+- **Lung** (C34)
+- **Breast** (C50)
+- **Colorectal** (C18-C20)
+- **Prostate** (C61)
+- **Stomach/Gastric** (C16)
 
-Data Preparation
-Place your raw EHR CSVs in a sibling folder to the repo root:
-- ../data/dataset.csv - Main table with at least the following columns:
-  - Participant ID
-  - Diagnoses - ICD10 (pipe-separated list; e.g., C50.9|I10|...)
-  - Date of first in-patient diagnosis - ICD10 | Array {k} (one column per ICD index, format YYYY/MM/DD)
-  - Type of cancer: ICD10
-  - Date of cancer diagnosis (YYYY/MM/DD)
-  - Date of birth (YYYY/MM/DD)
-  - Sex, Age (derived from time_since_birth)
+---
 
-- ../dataset/ (output directory, created if missing). Some steps also read from this folder.
-- Optional: ../dataset/aux_data.csv if you intend to extend auxiliary features (see step2_rankdate.py placeholder).
+## 🔧 System Requirements
 
-Important Configs (config.py)
-- gpu_id: GPU index when CUDA is available.
-- evaluation_times: Time horizons in days (e.g., 3, 6, 12, 36, 60 months).
-- LEVEL: ICD granularity level (used by downstream mapping).
-- EXCLUDE_DAY, EXCLUDE_DAY_Normal: Temporal exclusion windows.
-- DATASET_DIR: Output folder name (default "dataset").
-- Min_length: Minimum number of diagnoses required per patient.
-- model_type: Model variant flag (e.g., "ours").
-- DIMS: Embedding size.
-- TARGET_PATTERN: List of ICD "C" codes to focus on (e.g., ["34", "50"]) - define in your environment or inject into config if needed.
+### Hardware
+- **OS**: Linux (Ubuntu 20.04/22.04), macOS, or Windows WSL2
+- **CPU**: x86_64 architecture
+- **RAM**: 16 GB recommended
+- **GPU**: NVIDIA GPU with CUDA 11.x/12.x and ≥8 GB VRAM (optional but recommended)
+- **Storage**: ~10 GB free space
 
-Running the Pipeline
-0) From repo root: cd PaMCRP
+### Software Dependencies
+- **Python**: 3.9-3.11 (3.10 recommended)
+- **PyTorch**: 2.0-2.3 with matching CUDA build
+- **CUDA Toolkit**: 11.8 or 12.1 (if using GPU)
+- **Core Libraries**: pandas≥1.5, numpy≥1.23, scikit-learn≥1.1, tqdm, matplotlib, gensim
 
-1) Preprocess (steps 1-3) - build cohort and artifacts:
-   python run.py
+---
 
-   This runs:
-   - step1_cleansample.py -> ../dataset/step1_dataset_<TARGET>.csv
-   - step2_rankdate.py -> time/label/mask/top5_label pickles, plots under ./save/
-   - step3_1_icdmapping.py, step3_2_idx.py, step3_3_embedding.py, step3_4_dataset.py
+## 🚀 Quick Start
 
-2) Train the model:
-   python step4_train.py
+### 1. Environment Setup
 
-   Artifacts:
-   - ../results/best_model_<model_type>_<timestamp>.pth
-   - ./result/my_results/* (metrics, AUCs, C-index)
+```bash
+# Create conda environment
+conda create -n pamcrp python=3.10 -y
+conda activate pamcrp
 
-3) Test/evaluate a saved checkpoint:
-   python step5_test.py
+# Install PyTorch (choose based on your setup)
+# For CUDA 11.8
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 
-   Edit model_paths in step5_test.py to point to your checkpoint path if needed.
+# For CPU-only
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 
-Outputs
-- ../dataset/: All intermediate pickles and split artifacts (features/aux/labels/masks/times and indices).
-- ./save/: Plots such as cancer_interval_distribution.png.
-- ../results/: Trained model checkpoints.
-- ./result/my_results/: Aggregated evaluation results.
+# Install dependencies
+pip install pandas numpy scikit-learn tqdm matplotlib gensim
+```
 
-Notes and Tips
-- GPU selection: config.py auto-selects CUDA if available (uses gpu_id). For CPU-only, PyTorch will fall back automatically.
-- Date formats: Code assumes YYYY/MM/DD for date columns in the input CSV; adjust readers if your format differs.
-- Ethnicity mapping: step3_3_embedding.py maps several coded values to coarse groups; unknowns default to 4 (Other).
-- Reproducibility: seed_torch(2023) is used in training/eval utilities.
+### 2. Data Preparation
 
-Troubleshooting
-- Missing module errors (e.g., module.*): Ensure the "module" package with model/net/utils/eval files exists on PYTHONPATH if not included here.
-- Data columns not found: Verify column names match exactly (case and spacing matter). Adjust code where necessary.
-- CUDA errors: Install a PyTorch build compatible with your CUDA driver, or switch to CPU-only build.
-- Memory issues: Reduce batch_size in step4_train.py, shorten sequences, or filter smaller cohorts.
+Place your EHR data in the following structure:
+```
+../data/dataset.csv    # Main EHR table
+../dataset/            # Output directory (auto-created)
+../dataset/aux_data.csv # Optional auxiliary features
+```
+
+**Required columns in `dataset.csv`:**
+- Participant ID
+- Diagnoses - ICD10 (pipe-separated: `C50.9|I10|...`)
+- Date of first in-patient diagnosis - ICD10 (YYYY/MM/DD format)
+- Type of cancer: ICD10
+- Date of cancer diagnosis (YYYY/MM/DD)
+- Date of birth (YYYY/MM/DD)
+- Sex, Age
+
+### 3. Configuration
+
+Edit `config.py` to customize:
+- `gpu_id`: GPU index for CUDA
+- `evaluation_times`: Time horizons in days
+- `LEVEL`: ICD granularity level
+- `Min_length`: Minimum diagnoses per patient
+- `DIMS`: Embedding dimensions
+
+### 4. Run the Pipeline
+
+```bash
+# Step 1-3: Preprocessing
+python run.py
+
+# Step 4: Train model
+python step4_train.py
+
+# Step 5: Evaluate model
+python step5_test.py
+```
+
+---
+
+## 📁 Repository Structure
+
+```
+PaMCRP/
+├── 📄 config.py                 # Global configuration
+├── 🚀 run.py                   # Orchestrates preprocessing (steps 1-3)
+├── 🧹 step1_cleansample.py     # Build cohort subset
+├── 📊 step2_rankdate.py        # Sort diagnoses, compute features
+├── 🗺️ step3_1_icdmapping.py    # ICD-10 code utilities
+├── 📑 step3_2_idx.py           # Train/val/test split
+├── 🔗 step3_3_embedding.py     # Build patient feature tuples
+├── 💾 step3_4_dataset.py       # Materialize datasets
+├── 🎯 step4_train.py           # Model training
+├── 🧪 step5_test.py            # Model evaluation
+└── 📖 README.md                # This file
+```
+
+---
+
+## 📊 Pipeline Workflow
+
+```mermaid
+graph TD
+    A[Raw EHR Data] --> B[Step 1: Clean Sample]
+    B --> C[Step 2: Rank & Date Processing]
+    C --> D[Step 3: Feature Engineering]
+    D --> E[Step 4: Model Training]
+    E --> F[Step 5: Evaluation]
+
+    D --> D1[ICD Mapping]
+    D --> D2[Data Splitting]
+    D --> D3[Embedding]
+    D --> D4[Dataset Creation]
+```
+
+---
+
+## 📈 Outputs
+
+### Generated Artifacts
+- **`../dataset/`**: Preprocessed data, features, labels, and split indices
+- **`./save/`**: Visualization plots (cancer distribution, etc.)
+- **`../results/`**: Trained model checkpoints
+- **`./result/my_results/`**: Evaluation metrics and results
+
+### Key Files
+- `step1_dataset_<TARGET>.csv`: Cleaned cohort data
+- `best_model_<model_type>_<timestamp>.pth`: Best trained model
+- `cancer_interval_distribution.png`: Data visualization plots
+
+---
+
+## 🛠️ Troubleshooting
+
+### Common Issues
+
+| Issue | Solution |
+|-------|----------|
+| Missing module errors | Ensure all required packages are installed and PYTHONPATH is set |
+| Data column not found | Verify column names match exactly (case-sensitive) |
+| CUDA errors | Install PyTorch with compatible CUDA version or use CPU build |
+| Memory issues | Reduce batch size, sequence length, or filter smaller cohorts |
+
+### Performance Tips
+- **GPU Usage**: Enable CUDA for significant speedup during training
+- **Memory Optimization**: Adjust batch size based on available GPU memory
+- **Data Size**: Start with smaller cohorts for initial testing
+
+---
+
+## 📝 Notes
+
+- **Date Format**: All dates should be in `YYYY/MM/DD` format
+- **Reproducibility**: Uses `seed_torch(2023)` for consistent results
+- **Ethnicity Mapping**: Coded values mapped to coarse groups (see `step3_3_embedding.py`)
+- **GPU Selection**: Automatically selects CUDA if available
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Please feel free to submit issues and pull requests.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+<div align="center">
+
+**Built with ❤️ for advancing cancer risk prediction through AI**
+
+</div>
