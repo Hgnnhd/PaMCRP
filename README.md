@@ -1,93 +1,66 @@
 # PaMCRP
 
-A Passive Multi-Cancer Risk Prediction Framework Using Longitudinal Disease Trajectories.
+**A Passive Multi-Cancer Risk Prediction Framework Using Longitudinal Disease Trajectories**
 
-This public source release contains the core PaMCRP network and training code.
-It accepts privately prepared tensors through a documented interface. In keeping
-with the authors' requested disclosure scope for their UK Biobank (UKB) work,
-participant data, example records, cohort construction, source-field mappings,
-data cleaning, preprocessing scripts, derived datasets, and study outputs are
-not distributed. This repository does not implement a raw-data-to-tensor pipeline.
+PaMCRP predicts multi-cancer risk from longitudinal disease trajectories. Our
+framework combines hierarchical disease representations, temporal and age
+information, and proxy-based learning to capture shared and cancer-specific
+patterns for lung, breast, colorectal, prostate, and stomach cancer.
 
-## Contents
+## Model
 
-```text
-src/
-  config.py                 Model dimensions and prediction horizons
-  train_multicancer.py      Training, early stopping, checkpoint selection
-  module/
-    net.py                  Hierarchical embeddings and PaMCRP network
-    model.py                Transformer, cumulative risk heads, MGDA
-    utils.py                Orthogonality regularizer used by the network
-    data.py                 Prepared-tensor loading and interface validation
-    eval.py                 Aggregate AUC needed for validation and testing
-DATA_FORMAT.md              Private directory and tensor field conventions
-requirements.txt
-```
+- **Hierarchical disease embeddings** integrate four levels of disease tokens.
+- **Temporal and age conditioning** represents the timing of disease events.
+- **Transformer encoding** captures relationships across the disease trajectory.
+- **Proxy learning** guides category-aware patient representations.
+- **Cumulative risk heads** predict risk for five cancers at 90, 180, 360, 1080,
+  and 1800 days. A six-class auxiliary classifier distinguishes the reference
+  group and the five cancer categories.
 
-The model retains hierarchical token embeddings, temporal/age conditioning,
-Transformer encoding, proxy learning, five cumulative risk heads, and a six-class
-auxiliary classifier. Training combines masked binary cross entropy, category
-cross entropy, and the proxy objective using MGDA.
+We jointly optimize masked binary cross entropy, category cross entropy, and
+the proxy objective using the Multiple Gradient Descent Algorithm (MGDA).
 
-## Run training
+## Installation
 
-Use Python 3.10 or newer and install dependencies in a separate environment:
+Use Python 3.10 or newer:
 
 ```bash
 python -m venv .venv
-# Activate the environment using the command appropriate for your shell.
+# Activate the environment for your shell.
 python -m pip install -r requirements.txt
 ```
 
-Prepare the three private tensor files described in [DATA_FORMAT.md](DATA_FORMAT.md).
-Run from the repository root:
+## Training
+
+Organize the input tensors as described in [DATA_FORMAT.md](DATA_FORMAT.md),
+then run from the repository root:
 
 ```bash
-python -m src.train_multicancer --help
-python -m src.train_multicancer --data-dir /private/prepared_tensors --output-dir /private/pamcrp_runs --device cpu
+python -m src.train_multicancer --data-dir /path/to/prepared_tensors --output-dir runs/pamcrp --device cpu
 ```
 
-For a CUDA environment, use an appropriate PyTorch installation and set
-`--device cuda:0`. Defaults: 50 epochs, batch size 1024, learning rate 0.0005,
-patience 5, seed 2023. Smaller batches may be needed for the available memory.
-The loader holds each split in memory.
+Use `--device cuda:0` for GPU training. The default configuration uses 50 epochs,
+a batch size of 1024, a learning rate of 0.0005, and an early-stopping patience
+of 5 epochs. Run `python -m src.train_multicancer --help` for all options.
 
-The best checkpoint is selected using the unweighted mean of available validation
-AUCs across cancer categories and prediction horizons. A category/horizon with
-only one label class has an undefined AUC and is omitted from the mean; if all
-validation AUCs are undefined, training stops with an explicit error. The test
-split is evaluated once after restoring the best checkpoint.
+We select the best checkpoint by the mean validation AUC across available
+cancer/horizon pairs and evaluate it on the test split. Training produces
+`best_model.pt` and `metrics.json` in the output directory.
 
-Local outputs are `best_model.pt` and aggregate `metrics.json`. No participant
-identifiers or individual predictions are exported. Keep all outputs in the
-authorized environment; creating a checkpoint or aggregate result does not
-establish that it is approved for public release. The included `.gitignore`
-excludes common local data, checkpoints, and run directories.
+## Code structure
 
-## Public-release changes
-
-- Removed preprocessing, example CSV files, data-derived figures, interpretation
-  utilities, unused analysis helpers, and compiled Python caches.
-- Replaced preprocessing-specific pickle filenames and patient-ID inputs with
-  the prepared-tensor interface. This is an interface change; old datasets are
-  not read directly.
-- Preserved the core network and three training objectives. Cancer-head sample
-  eligibility now uses six-class category labels; the old training entry point
-  compared a binary event indicator against cancer category IDs.
-- Restricted validation to the provided horizon labels and observation masks.
-  The former evaluation inferred horizon labels from mask positions. The public
-  version also omits C-index, bootstrap analysis, risk-group tables, and plots.
-  It is not a reproduction of the original study's complete analysis pipeline.
-- Added a zero-gradient normalization guard for MGDA and made positional
-  embeddings follow the input device.
-
-No UKB data or pretrained weights are provided, and no study performance is
-claimed by this source release. Users must obtain their own authorized data and
-prepare compatible tensors within their approved environment. The documentation
-describes only the model input contract, not the original cohort or processing
-procedures.
+```text
+src/
+  config.py                 Model configuration
+  train_multicancer.py      Training entry point
+  module/
+    net.py                  PaMCRP network
+    model.py                Transformer, cumulative risk heads, and MGDA
+    utils.py                Orthogonality regularization
+    data.py                 Tensor loading
+    eval.py                 AUC evaluation
+```
 
 ## License
 
-The project's existing Apache License 2.0 is retained in [LICENSE](LICENSE).
+This project is licensed under the [Apache License 2.0](LICENSE).
