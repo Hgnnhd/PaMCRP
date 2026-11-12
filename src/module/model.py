@@ -153,7 +153,7 @@ class MGDA(nn.Module):
             return gamma, cost
 
         def _min_norm_2d(grad_mat):
-            dmin = 1e8
+            dmin = float('inf')
             for i in range(grad_mat.size()[0]):
                 for j in range(i + 1, grad_mat.size()[0]):
                     c, d = _min_norm_element_from2(grad_mat[i, i], grad_mat[i, j], grad_mat[j, j])
@@ -235,7 +235,7 @@ class MGDA(nn.Module):
             gn = torch.ones_like(loss_data).to(self.device)
         else:
             raise ValueError('No support normalization type {} for MGDA'.format(ntype))
-        grads = grads / gn.unsqueeze(1).repeat(1, grads.size()[1])
+        grads = grads / gn.clamp_min(1e-12).unsqueeze(1)
         return grads
 
     def backward(self, losses):

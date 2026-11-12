@@ -2,9 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
-from module.model import Transformer, CumulativeProbabilityLayer
-from module.utils import OrthogonalityLosses
-from config import TARGET_PATTERN, evaluation_times, device
+from .model import Transformer, CumulativeProbabilityLayer
+from .utils import OrthogonalityLosses
+from ..config import NUM_CATEGORIES, evaluation_times
 
 
 class PaMCRP(nn.Module):
@@ -61,7 +61,7 @@ class PaMCRP(nn.Module):
             nn.Linear(input_dim, input_dim)
         )
 
-        num_prompts = len(TARGET_PATTERN) - 1
+        num_prompts = NUM_CATEGORIES
 
         proxy_dim = num_prompts
         self.proxy = nn.Parameter(torch.randn(num_prompts, proxy_dim))
@@ -200,7 +200,7 @@ class PaMCRP(nn.Module):
         div_term = torch.exp(torch.arange(0, h_dim, 2).float() * (-math.log(10000.0) / h_dim))
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
-        pe = pe.unsqueeze(0).to(device)
+        pe = pe.unsqueeze(0).to(x.device)
         return x + pe[:,:x.size(1), :]
 
 
@@ -211,7 +211,7 @@ class PaMCRP(nn.Module):
         div_term = torch.exp(torch.arange(0, h_dim, 2).float() * (-math.log(10000.0) / h_dim))
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
-        pe = pe.unsqueeze(0).to(device)
+        pe = pe.unsqueeze(0).to(x.device)
         return pe[:,:x.size(1), :]
 
 
